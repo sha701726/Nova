@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Nova - Secure Transactions</title>
+  <link rel="stylesheet" href="/static/style.css?v=6" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <!-- SPLASH: click logo to reveal auth -->
+  <div id="splash" class="splash" aria-live="polite">
+    <div class="splash-card">
+      <div class="splash-logo-btn" id="splashLogoBtn" title="Tap to get started">
+        <div class="splash-logo-ring-outer"></div>
+        <div class="splash-logo-ring-inner"></div>
+        <img src="/images/logo.png" class="splash-logo-img" alt="Nova Logo" />
+      </div>
+      <div class="splash-logo">NOVA</div>
+      <div class="splash-sub">Secure mobile transactions</div>
+      <div class="splash-loader" id="splashLoader" aria-hidden="true"></div>
+      <div class="splash-hint" id="splashHint" style="display:none;">Tap the logo to get started</div>
+    </div>
+  </div>
+
+  <main id="appShell" class="app-shell">
+
+    <!-- AUTH SCREEN -->
+    <section id="screen-auth" class="screen" data-screen="auth">
+      <div class="auth-hero">
+        <canvas id="authParticles" class="auth-particles"></canvas>
+        <div class="auth-logo-wrap">
+          <div class="auth-logo-ring"></div>
+          <img src="/images/logo.png" class="auth-logo-img" alt="Nova" />
+        </div>
+        <div class="auth-brand">NOVA</div>
+        <div class="auth-tagline">Secure · Fast · Trusted</div>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="showTab('register')">Register</button>
+        <button class="auth-tab"        onclick="showTab('login')">Login</button>
+      </div>
+
+      <!-- REGISTER CARD -->
+      <div class="card" id="card-register">
+        <h2 class="card-title">Create Account</h2>
+
+        <div class="field">
+          <label for="regName">Full Name</label>
+          <input id="regName" type="text" maxlength="60" placeholder="Your full name" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="regUserId">User ID <span class="muted small">(optional, auto-generated if empty)</span></label>
+          <input id="regUserId" type="text" maxlength="20" placeholder="Leave blank to auto-generate" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="regCodeName">Code Name <span class="muted small">(5-7 characters)</span></label>
+          <input id="regCodeName" type="text" maxlength="7" placeholder="5-7 characters" autocomplete="off" />
+        </div>
+
+        <!-- EMAIL + OTP -->
+        <div class="field">
+          <label for="regEmail">Email Address</label>
+          <input id="regEmail" type="email" maxlength="100" placeholder="you@example.com" autocomplete="off" />
+        </div>
+        <div class="field otp-row" id="emailOtpRow" style="display:none;">
+          <label for="regEmailOtp">Email OTP</label>
+          <div class="otp-input-wrap">
+            <input id="regEmailOtp" type="text" maxlength="6" placeholder="6-digit code" autocomplete="off" inputmode="numeric" />
+            <button id="btnVerifyEmailOtp" class="btn btn-ghost otp-verify-btn">Verify</button>
+          </div>
+          <div id="emailOtpStatus" class="muted small" style="margin-top:4px;"></div>
+        </div>
+        <div class="field" id="emailSendRow">
+          <button id="btnSendEmailOtp" class="btn btn-ghost btn-full">Send Email OTP</button>
+        </div>
+
+        <!-- PHONE (no OTP, stored for reference only) -->
+        <div class="field">
+          <label for="regPhone">Mobile Number <span class="muted small">(10 digits, optional)</span></label>
+          <input id="regPhone" type="tel" inputmode="numeric" maxlength="10" placeholder="9876543210" autocomplete="off" />
+        </div>
+
+        <!-- PASSWORD -->
+        <div class="field">
+          <label for="regPassword">Password <span class="muted small">(12-16 characters)</span></label>
+          <input id="regPassword" type="password" maxlength="16" placeholder="12-16 characters" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label for="regPasswordConfirm">Confirm Password</label>
+          <input id="regPasswordConfirm" type="password" maxlength="16" placeholder="Re-enter password" autocomplete="new-password" />
+        </div>
+
+        <div class="otp-verified-badges" id="verifiedBadges" style="display:none;">
+          <span id="emailVerifiedBadge" class="verified-badge" style="display:none;">Email Verified</span>
+        </div>
+
+        <button id="btnRegister" class="btn btn-gold btn-full" style="margin-top:12px;">Create Account</button>
+        <div id="authRegisterMsg" class="msg"></div>
+      </div>
+
+      <!-- LOGIN CARD -->
+      <div class="card" id="card-login" style="display:none;">
+        <h2 class="card-title">Login</h2>
+
+        <!-- Google OAuth -->
+        <div id="googleSignInBtn" class="google-signin-wrap">
+          <div id="g_id_onload"
+            data-client_id="1097116870868-7ivki8folv3smkprudo8nmemhcb3gssd.apps.googleusercontent.com"
+            data-callback="handleGoogleCredential"
+            data-auto_prompt="false">
+          </div>
+          <div class="g_id_signin"
+            data-type="standard"
+            data-size="large"
+            data-theme="filled_black"
+            data-text="sign_in_with"
+            data-shape="rectangular"
+            data-logo_alignment="left"
+            data-width="100%">
+          </div>
+        </div>
+
+        <div class="auth-divider"><span>or login with code name</span></div>
+
+        <div class="field">
+          <label for="loginCodeName">Code Name</label>
+          <input id="loginCodeName" type="text" maxlength="20" placeholder="Enter code name" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" placeholder="Enter password" autocomplete="off" />
+        </div>
+        <button id="btnLogin" class="btn btn-gold btn-full">Login</button>
+        <div id="authLoginMsg" class="msg"></div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD SCREEN -->
+    <section id="screen-dashboard" class="screen hidden" data-screen="dashboard">
+      <header class="topbar">
+        <div class="topbar-brand-wrap">
+          <img src="/images/logo.png" class="topbar-logo" alt="Nova" />
+          <div class="brand">NOVA</div>
+        </div>
+        <div class="topbar-actions">
+          <button id="btnAbout"  class="btn btn-ghost">Rules</button>
+          <button id="btnLogout" class="btn btn-ghost">Logout</button>
+        </div>
+      </header>
+
+      <div class="dashboard-layout">
+        <aside class="dashboard-sidebar">
+          <div class="sidebar-title">Receive Coins</div>
+          <div class="muted small">Your QR — let others scan to pay you</div>
+          <div id="myQrBox" class="qr-box"></div>
+          <div class="muted small" style="margin-top:6px;">Others scan this to send you coins.</div>
+          <div class="sidebar-details">
+            <div class="sidebar-row">
+              <div class="sidebar-label">Account name</div>
+              <div id="sidebarMeCodeName" class="sidebar-value">-</div>
+            </div>
+            <div class="sidebar-row">
+              <div class="sidebar-label">Account no (coin)</div>
+              <div id="sidebarMeCoin" class="sidebar-value">-</div>
+            </div>
+            <div class="sidebar-row">
+              <div class="sidebar-label">Balance (1 Coin = ₹10,000)</div>
+              <div id="sidebarMeCoinValue" class="sidebar-value">0</div>
+            </div>
+          </div>
+        </aside>
+
+        <div class="dashboard-main">
+          <div class="card">
+            <div class="row-between">
+              <div>
+                <div class="muted">Logged in as</div>
+                <div id="meCodeName" class="big-gold">-</div>
+                <div id="loginStatus" class="muted small" style="margin-top:6px;"></div>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div class="grid-2">
+              <div class="stat">
+                <div class="muted">Balance (1 Coin = ₹10,000)</div>
+                <div id="meCoinValue" class="stat-value">0</div>
+              </div>
+              <div class="stat">
+                <div class="muted">Your Account</div>
+                <div id="meCoin" class="stat-value coin-wrap">-</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BUY COINS CARD -->
+          <div class="card buy-coins-card">
+            <h3 class="section-title">Buy Nova Coins</h3>
+            <div class="muted small" style="margin-bottom:14px;">Purchase coins instantly via Razorpay. Coins are credited immediately after payment confirmation.</div>
+            <div class="coin-packages" id="coinPackages">
+              <div class="coin-pkg" data-coins="1" data-price="1000000">
+                <div class="pkg-coins">1 <span class="pkg-coin-label">Coin</span></div>
+                <div class="pkg-price">&#8377;10,000</div>
+                <div class="pkg-rate">&#8377;10,000/coin</div>
+              </div>
+              <div class="coin-pkg" data-coins="5" data-price="4750000">
+                <div class="pkg-coins">5 <span class="pkg-coin-label">Coins</span></div>
+                <div class="pkg-price">&#8377;47,500</div>
+                <div class="pkg-rate">&#8377;9,500/coin</div>
+                <div class="pkg-badge">Popular</div>
+              </div>
+              <div class="coin-pkg" data-coins="10" data-price="9000000">
+                <div class="pkg-coins">10 <span class="pkg-coin-label">Coins</span></div>
+                <div class="pkg-price">&#8377;90,000</div>
+                <div class="pkg-rate">&#8377;9,000/coin</div>
+              </div>
+              <div class="coin-pkg" data-coins="25" data-price="21250000">
+                <div class="pkg-coins">25 <span class="pkg-coin-label">Coins</span></div>
+                <div class="pkg-price">&#8377;2,12,500</div>
+                <div class="pkg-rate">&#8377;8,500/coin</div>
+                <div class="pkg-badge best">Best Value</div>
+              </div>
+            </div>
+            <div id="selectedPkgInfo" class="selected-pkg-info hidden">
+              <span id="selectedPkgText">--</span>
+              <button class="btn btn-ghost btn-sm" id="btnClearPkg">Change</button>
+            </div>
+            <button id="btnBuyCoins" class="btn btn-gold btn-full" style="margin-top:12px;" disabled>Select a Package to Buy</button>
+            <div id="buyMsg" class="msg" style="margin-top:8px;"></div>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Pay</h3>
+            <div class="muted small">Scan receiver's QR to make a transaction</div>
+            <button id="btnOpenScanner" class="btn btn-gold btn-full" style="margin-top:10px;">Pay by Scanning QR</button>
+            <button id="btnManualPay"   class="btn btn-ghost btn-full" style="margin-top:10px;">Pay Manually</button>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Earn Coins by Running</h3>
+            <div class="muted small">
+              Run 10 km in one session = 1 coin (worth ₹10,000).<br>
+              Register before 5:00 AM IST. Window: 5:00-8:00 AM IST. No carry-forward.
+            </div>
+            <button id="btnStartRun" class="btn btn-gold btn-full" style="margin-top:10px;">Start Run</button>
+            <button id="btnStopRun"  class="btn btn-ghost btn-full hidden" style="margin-top:10px;">Stop &amp; Submit Run</button>
+            <div id="runStats" class="run-stats hidden">
+              <div class="run-stat-row"><span class="muted small">Distance</span><span id="runDistance" class="run-stat-val">0.00 km</span></div>
+              <div class="run-stat-row"><span class="muted small">Speed</span><span id="runSpeed" class="run-stat-val">0.0 km/h</span></div>
+              <div class="run-stat-row"><span class="muted small">GPS Points</span><span id="runPoints" class="run-stat-val">0</span></div>
+              <div class="run-stat-row"><span class="muted small">Status</span><span id="runStatus" class="run-stat-val">-</span></div>
+            </div>
+            <div id="runMsg" class="msg" style="margin-top:8px;"></div>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">Search Account</h3>
+            <div class="field">
+              <label for="searchCodeName">Search by username</label>
+              <input id="searchCodeName" type="text" maxlength="20" placeholder="Enter code name" />
+            </div>
+            <button id="btnSearch" class="btn btn-gold btn-full">Search</button>
+            <div id="searchResult" class="search-result hidden"></div>
+          </div>
+
+          <div class="card">
+            <div class="row-between" style="margin-bottom:8px;">
+              <h3 class="section-title" style="margin:0;">Recent Transactions</h3>
+              <button id="btnRefreshTx" class="btn btn-ghost btn-sm">Refresh</button>
+            </div>
+            <div id="txList"><div class="muted small">Loading...</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAY SCREEN -->
+    <section id="screen-pay" class="screen hidden" data-screen="pay">
+      <header class="topbar">
+        <button id="btnBackToDashFromPay" class="btn btn-ghost">&larr; Back</button>
+        <div class="brand">Payment</div>
+      </header>
+      <div class="card">
+        <h2 class="card-title">Secure Payment</h2>
+        <div id="receiverBox" class="receiver-box hidden"></div>
+        <div id="manualReceiverBox" class="hidden">
+          <div class="field">
+            <label for="manualReceiverCodeName">Receiver code name</label>
+            <input id="manualReceiverCodeName" type="text" maxlength="20" placeholder="Receiver code name" />
+          </div>
+          <div class="field">
+            <label for="manualReceiverCoin">Receiver coin number (auto-fills)</label>
+            <input id="manualReceiverCoin" type="text" placeholder="Will auto-fill" readonly />
+          </div>
+        </div>
+        <div class="field">
+          <label for="payAmount">Amount (coins)</label>
+          <input id="payAmount" type="number" inputmode="numeric" min="1" placeholder="e.g. 5" />
+        </div>
+        <div class="field">
+          <label for="payPassword">Your password</label>
+          <input id="payPassword" type="password" placeholder="Enter password to confirm" />
+        </div>
+        <button id="btnPayNow" class="btn btn-gold btn-full">Confirm Payment</button>
+        <div id="payMsg" class="msg" style="margin-top:8px;"></div>
+      </div>
+    </section>
+
+    <!-- PAY SUCCESS SCREEN -->
+    <section id="screen-paySuccess" class="screen hidden" data-screen="paySuccess">
+      <header class="topbar">
+        <button id="btnBackToDashFromSuccess" class="btn btn-ghost">&larr; Dashboard</button>
+        <div class="brand">Success</div>
+      </header>
+      <div class="card" style="text-align:center;padding:40px 14px;">
+        <div style="font-size:56px;margin-bottom:14px;"></div>
+        <h2 style="color:var(--ok);margin:0 0 8px;">Payment Sent!</h2>
+        <div id="successText" class="muted" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- SCANNER MODAL -->
+  <div id="scannerModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">Scan QR Code</div>
+        <button id="btnCloseScanner" class="btn btn-ghost">&#x2715;</button>
+      </div>
+      <video id="scannerVideo" class="scanner-video" autoplay playsinline muted></video>
+      <canvas id="scannerCanvas" class="hidden" style="display:none;"></canvas>
+      <div id="scannerMsg" class="msg" style="margin:8px 0;min-height:20px;"></div>
+      <div class="field" style="margin-top:8px;">
+        <label for="qrPaste">Or paste QR text here</label>
+        <textarea id="qrPaste" rows="3" placeholder="Paste encrypted QR text..."></textarea>
+      </div>
+      <button id="btnVerifyPastedQr" class="btn btn-gold btn-full">Verify QR</button>
+    </div>
+  </div>
+
+  <!-- RULES MODAL -->
+  <div id="aboutModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-box rules-modal-box">
+      <div class="modal-header">
+        <div class="modal-title">Nova -- Rules &amp; Code of Conduct</div>
+        <button id="btnCloseAbout" class="btn btn-ghost">&#x2715;</button>
+      </div>
+
+      <div class="rules-intro">
+        Nova is built on trust. Trust is not given freely -- it is earned through behaviour.
+        Every coin in this system carries real monetary value of Rs 10,000.
+        That weight comes with responsibility. These rules are not suggestions.
+        They are the boundary between a functioning system and its collapse.
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">I. Foundation of Value</div>
+        <div class="rules-list">
+          <div class="rules-item">
+            <div class="rules-num">1</div>
+            <div class="rules-text">One Nova Coin is equal to Rs 10,000. This value is fixed and recognised within the Nova system. No participant may unilaterally redefine this value in any transaction, agreement, or claim.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">2</div>
+            <div class="rules-text">Coins are earned through physical effort (10 km run) or purchased through the official payment gateway. There is no other legitimate source of coins.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">3</div>
+            <div class="rules-text">Any coin obtained outside these two methods -- through exploits, manipulation, social engineering, or system abuse -- is considered void and grounds for permanent account removal.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">II. Prohibited Conduct</div>
+        <div class="rules-list">
+          <div class="rules-item">
+            <div class="rules-num">4</div>
+            <div class="rules-text">Using Nova to receive payment for illegal goods, illegal services, or activity that violates Indian law is strictly forbidden. This includes but is not limited to: narcotics, weapons, extortion, and fraud.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">5</div>
+            <div class="rules-text">Coercing, threatening, or pressuring another user into a transaction is a serious violation. All transfers must be voluntary and consented to by both parties.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">6</div>
+            <div class="rules-text">Impersonating another user, using fake credentials, or creating accounts under false identity is prohibited. Each account must represent one real individual.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">7</div>
+            <div class="rules-text">Attempting to manipulate GPS data, forge run sessions, exploit API endpoints, or interfere with the system in any technical manner constitutes abuse and will result in immediate account termination.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">8</div>
+            <div class="rules-text">Sharing your password with any other person removes your protection under this system. You are solely responsible for all activity performed under your account.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">III. Transactional Integrity</div>
+        <div class="rules-list">
+          <div class="rules-item">
+            <div class="rules-num">9</div>
+            <div class="rules-text">Every transaction recorded on Nova is permanent and cannot be reversed. Before confirming any payment, verify the receiver's identity and account number. Mistakes are your responsibility.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">10</div>
+            <div class="rules-text">QR codes expire after 60 seconds. This is a security feature. Do not attempt to reuse, photograph, or redistribute a QR code to circumvent this expiry.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">11</div>
+            <div class="rules-text">If you receive coins for a service or product, you are obligated to deliver on that commitment. Nova is not responsible for disputes between users, but repeated bad-faith actors will be removed.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">IV. Earning Through Running</div>
+        <div class="rules-list">
+          <div class="rules-item">
+            <div class="rules-num">12</div>
+            <div class="rules-text">The running feature exists to reward real physical effort. It is an honour-based feature backed by technical anti-cheat measures including speed variance analysis, GPS accuracy checks, and time-window enforcement.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">13</div>
+            <div class="rules-text">You must start your session before 5:00 AM IST and complete 10 km between 5:00 AM and 8:00 AM IST. Distance does not carry over between sessions. One coin per day maximum.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">14</div>
+            <div class="rules-text">Driving, cycling, using a vehicle, or having another person carry your phone during a run session is cheating. The system will detect abnormal speed patterns. Accounts found cheating will be permanently banned.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">V. Consequences</div>
+        <div class="rules-list">
+          <div class="rules-item">
+            <div class="rules-num">15</div>
+            <div class="rules-text">Violation of any rule above may result in: temporary suspension, permanent account removal, forfeiture of coin balance, or reporting to relevant authorities where applicable under Indian law.</div>
+          </div>
+          <div class="rules-item">
+            <div class="rules-num">16</div>
+            <div class="rules-text">Nova administrators reserve the right to investigate suspicious activity, freeze accounts under review, and make final decisions on rule violations. These decisions are not subject to appeal through the app.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rules-section">
+        <div class="rules-section-title">VI. The Core Principle</div>
+        <div class="rules-closing">
+          If you would not do it in front of everyone using this system, do not do it here.
+          Nova is a small community. Reputation travels fast. Act accordingly.
+        </div>
+      </div>
+
+      <div class="divider" style="margin:18px 0;"></div>
+      <div class="modal-title" style="margin-bottom:8px;">Live Activity</div>
+      <div id="activityList"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY MODAL -->
+  <div id="historyModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">Transaction History</div>
+        <button id="btnCloseHistory" class="btn btn-ghost">&#x2715;</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- INVOICE MODAL -->
+  <div id="invoiceModal" class="modal hidden" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">Purchase Invoice</div>
+        <button id="btnCloseInvoice" class="btn btn-ghost">&#x2715;</button>
+      </div>
+      <div id="invoiceContent" class="invoice-body"></div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button id="btnPrintInvoice" class="btn btn-gold btn-full">Download / Print</button>
+        <button class="btn btn-ghost btn-full" id="btnCloseInvoice2">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=6"></script>
+</body>
+</html>
